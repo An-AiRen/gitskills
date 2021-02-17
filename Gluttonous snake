@@ -1,0 +1,364 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<Windows.h>
+#include<stdbool.h>
+#include<time.h>
+#include<conio.h>
+#define MAXLEN 200
+
+bool gameover;
+bool hit = false;
+bool stop = false;
+bool if_ESC = false;
+
+/* the width and the height */
+const int width = 50;
+const int height = 20;
+int score;
+int x, y; // the coordinates of snake's head.因为是静态存储变量，所以初始化为0 
+int fruitX, fruitY; // the coordinate of fruit
+int tailX[MAXLEN], tailY[MAXLEN]; //coordinate for every dot
+int ntail = 3; //default option of snake's length when you start game
+typedef enum direction {
+	STOP = 0,
+	LEFT,
+	RIGHT,
+	UP,
+	DOWN
+}Direction;//这个枚举变量表示 
+Direction Dir;
+
+FILE * fp;
+
+int menu(void)
+{
+	int input;
+	
+	printf("-----------------------------------------------\n");
+	printf("  |		贪吃蛇游戏		|\n");
+	printf("  |		1) 新游戏		|\n");
+	printf("  |		2) 继续游戏		|\n");
+	printf("  |		3) 退出游戏		|\n");
+	printf("-----------------------------------------------\n");
+	printf("-->	    请输入你的选择:\n");
+	
+	while (scanf("%d", &input) != 1 || (input > 3 || input < 1))
+	{
+		puts("Invalid value");
+		while (getchar() != '\n')
+			continue;
+		puts("Again:");
+	}
+	
+	while (getchar() != '\n')
+			continue;
+			
+	return input;
+}
+
+void Initialize(void)
+{
+	int i;
+	
+	gameover = false;
+	srand((unsigned int) time(0));
+	Dir = RIGHT; // initialize the condition of snake
+	/**把data.txt文件清空**/ 
+	fp = fopen("C:\\Users\\86188\\OneDrive\\桌面\\data.txt", "w");
+	fclose(fp);
+	
+	x = width / 2;
+	y = height / 2;
+	
+//	tailX[0] = x;
+//	tailY[0] = y;
+	for (i = 0; i < ntail; i++)
+	{
+		tailX[i] = x - i;
+		tailY[i] = y; 
+	}
+	
+	fruitX = rand() % (width - 2) + 1; //shall add 1? -- depend on the next step you make
+	fruitY = rand() % (height - 2) + 1; //fruit's coordinate is random
+	
+	score = 0; 
+} 
+void draw(void)
+{
+	int row, column;
+	int k; // to draw the body of snake
+	bool print; // to judge if the postion has been marked
+	
+	if (stop == true)
+		return;
+	system("cls");
+	printf("分数:%d",score);
+    printf("\n");
+	
+	for (row = 0; row < height; row++)
+	{
+		
+		for (column = 0; column < width; column++)
+		{
+			print = false;
+			
+			if (row == 0 || row == height - 1)
+			{	printf("-"); //deal with the first line and the last line
+				print = true;
+			}
+			else if (column == 0 || column == width - 1)
+			{		
+				printf("|");
+				print = true;
+			}
+			
+			if (fruitX == column && fruitY == row)
+			{
+				printf("0");
+				print = true;
+			}
+			else
+			{
+				for (k = 0; k < ntail; k++)
+				{
+					if (tailX[k] == column && tailY[k] == row)
+					{
+						if (k == 0)
+							printf("O");
+						else
+							printf("*");
+						print = true;
+					}
+				}
+			}
+			
+			if (!print)
+				printf(" ");
+		}
+		putchar('\n');
+	}
+}
+void input(void)
+{
+	hit = false;
+	
+	if (_kbhit()) //该函数检查当前是否有键盘输入，若有返回非零值，包含在conio.h中 
+	{
+		switch (_getch())/*我们一般所使用的 getchar() 函数在读入一个字符时 必须按一下 enter 键，该代码才会继续运行;
+						但是 getch() 函数读入一个字符时 不用 enter 代码会继续跑；*/
+		{
+			case 75: Dir = LEFT; //Ascii 左键=75 
+					 hit = true;
+					 break;
+			case 72: Dir = UP;
+					 hit = true;
+					 break;
+			case 77: Dir = RIGHT;
+					 hit = true;
+					 break;
+			case 80: Dir = DOWN;
+					 hit = true;
+					 break;
+			case 27: gameover = true;//ESC
+					 if_ESC = true;
+					 break; 
+			case 32: stop = !stop;
+					 break;
+		}
+		
+	}
+	else if (!hit && stop == false)//若没有改变方向
+	{
+//		if (Dir == RIGHT)
+//			x++;//????/????/??????
+//		else if (Dir == LEFT)
+//			x--;
+//		else if (Dir == UP)
+//			y--;
+//		else
+//			y++;
+		return;
+	} 
+}
+
+bool touchself(void)
+{
+	int i;
+	
+	for (i = 1; i < ntail; i++)
+	{
+		if (tailX[i] == tailX[0] && tailY[i] == tailY[0])
+		{	
+			return true;
+		}
+	}
+	return false;
+}
+/* 判断贪吃蛇长度 */
+void logic(void)
+{
+	if (stop == true)
+	{
+		return;
+	}
+	
+	int lastX = tailX[0];
+	int lastY = tailY[0];
+	int Tx, Ty;
+	int i;
+	
+	switch (Dir)
+		{
+			case UP: y--;
+					 break;
+			case DOWN: y++;
+					   break;
+			case LEFT: x--;
+					   break;
+			case RIGHT: x++;
+						break;
+		}
+	
+	
+	//获得最新位置 
+	tailX[0] = x;
+	tailY[0] = y;
+	
+	for (i = 1; i < ntail; i++)
+	{
+		Tx = tailX[i];
+		Ty = tailY[i];
+		tailX[i] = lastX;
+		tailY[i] = lastY;
+		lastX = Tx;
+		lastY = Ty;
+	}
+	
+	//game over
+	if (x < 0 || x > (width - 1) || y < 0 || y > (height - 1)||touchself())
+	{
+		gameover = true;
+		system("cls");
+		
+		printf("------------------------------------------------------------------\n");
+        printf("|                                                                |\n");
+        printf("|                                                                |\n");
+        printf("|                             游戏结束                           |\n");
+        printf("|                                                                |\n");
+        printf("|                                                                |\n");
+        printf("------------------------------------------------------------------\n");
+        printf("your score: %5d\n", score);
+		
+		/**把data.txt文件清空**/ 
+		fp = fopen("C:\\Users\\86188\\OneDrive\\桌面\\data.txt", "w");
+		fclose(fp);
+		return;
+	}
+	// 吃到果子
+	if (x == fruitX && y == fruitY)
+	{
+		score += 10;
+		ntail++;
+		
+		fruitX = rand() % (width - 2) + 1; 
+		fruitY = rand() % (height - 2) + 1; 
+	} 
+} 
+
+void save_moment(void)
+{
+	/**open the file**/
+	if ((fp = fopen("C:\\Users\\86188\\OneDrive\\桌面\\data.txt", "w+")) != NULL)
+	{
+		/**save the length of snake**/
+		fwrite(&ntail, sizeof(int), 1, fp);
+		/**save the coordinate of snake**/
+		fwrite(tailX, sizeof(int), ntail, fp);
+		fwrite(tailY, sizeof(int), ntail, fp);
+		/**save the coordinate of fruit**/
+		fwrite(&fruitX, sizeof(int), 1, fp);
+		fwrite(&fruitY, sizeof(int), 1, fp);
+		/**save the Direction**/
+		fwrite(&Dir, sizeof(int), 1, fp);
+		/**save the score**/
+		fwrite(&score, sizeof(int), 1, fp);
+		/**save x and y for next game**/
+		fwrite(&x, sizeof(int), 1, fp);
+		fwrite(&y, sizeof(int), 1, fp);
+		
+		fclose(fp);
+	}
+	else
+	{
+		fprintf(stderr, "Can't open the file!");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void play(void)
+{
+	while(!gameover)
+	{
+		draw();
+		input();
+		logic();
+		Sleep(70);//用于调整游戏速度 
+	}
+	if (if_ESC)
+	{
+		save_moment();
+	}
+	
+	return;
+}
+void restarttheGame(void)
+{
+	if ((fp = fopen("C:\\Users\\86188\\OneDrive\\桌面\\data.txt", "r")) == NULL)//只读用于读取数据
+	{
+		printf("There is no data for your last game,");
+		printf(" please start a new game!\n");
+		return;
+	}
+	else
+	{
+		fread(&ntail, sizeof(int), 1, fp);
+		fread(tailX, sizeof(int), ntail, fp);
+		fread(tailY, sizeof(int), ntail, fp);
+		fread(&fruitX, sizeof(int), 1, fp);
+		fread(&fruitY, sizeof(int), 1, fp);
+		fread(&Dir, sizeof(int), 1, fp);
+		fread(&score, sizeof(int), 1, fp);
+		fread(&x, sizeof(int), 1, fp);
+		fread(&y, sizeof(int), 1, fp);
+		
+		fclose(fp);
+		
+		gameover = false;//because ESC makes gameover true
+		play();
+		return;
+	}
+	 
+}
+int main()
+{
+	int choice;
+#if 0
+        while(1)
+        {
+                printf("%d\n",_getch());
+        }
+#endif
+	//choice = menu();
+	while (!gameover && ((choice = menu()) != 3))//这while tm毫无用处 
+	{
+		switch (choice)
+		{	
+			case 1: Initialize();
+   				 /*循环画贪吃蛇的界面*/
+   					play();
+			    	break;
+			case 2: restarttheGame();
+		}
+	}
+    puts("See you again!");
+}
